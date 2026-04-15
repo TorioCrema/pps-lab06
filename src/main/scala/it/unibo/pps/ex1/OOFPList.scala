@@ -44,16 +44,39 @@ enum List[A]:
   def reduce(op: (A, A) => A): A = this match
     case Nil() => throw new IllegalStateException()
     case h :: t => t.foldLeft(h)(op)
+
+  def filterUntil(predicate: A => Boolean): List[A] = this match
+    case h :: t => if !predicate(h) then h :: t.filterUntil(predicate) else Nil()
+    case _ => Nil()
+
+  def filterAsLongAs(predicate: A => Boolean): List[A] = this match
+    case h :: t => if predicate(h) then t.filterAsLongAs(predicate) else h :: t
+    case _ => Nil()
   
   // Exercise: implement the following methods
-  def zipWithValue[B](value: B): List[(A, B)] = ???
-  def length(): Int = ???
-  def indices(): List[Int] = ???
-  def zipWithIndex: List[(A, Int)] = ???
-  def partition(predicate: A => Boolean): (List[A], List[A]) = ???
-  def span(predicate: A => Boolean): (List[A], List[A]) = ???
-  def takeRight(n: Int): List[A] = ???
-  def collect(predicate: PartialFunction[A, A]): List[A] = ???
+  def zipWithValue[B](value: B): List[(A, B)] = map(elem => (elem, value))
+
+  def length(): Int = foldLeft(0)({ case (acc, _) => acc + 1})
+
+  def indices(): List[Int] =
+    foldRight((this.length() - 1, Nil[Int]()))({ case (elem, (i, indices)) => (i - 1, i :: indices) })
+      match { case (_, result) => result }
+
+  def zipWithIndex: List[(A, Int)] =
+    foldRight((this.length() - 1, Nil[(A, Int)]())){ case (elem, (i, zipped)) => (i - 1, (elem, i) :: zipped) }
+      match { case (_, result) => result }
+
+  def partition(predicate: A => Boolean): (List[A], List[A]) = (this.filter(predicate), this.filter(!predicate(_)))
+
+  def span(predicate: A => Boolean): (List[A], List[A]) =
+    (this.filterUntil(!predicate(_)), this.filterAsLongAs(predicate))
+
+  def takeRight(n: Int): List[A] =
+    foldRight((n, Nil[A]()))({ case (elem, (i, list)) => if i > 0 then (i - 1, elem :: list) else (i - 1, list) })
+    match { case (_, list) => list }
+
+  def collect(predicate: PartialFunction[A, A]): List[A] = this.filter(predicate.isDefinedAt).map(predicate)
+
 // Factories
 object List:
 
